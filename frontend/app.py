@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ingest.ingestion import DocumentIngestionPipeline
 from data.vector_store import LocalVectorStore
 from core.orchestration import HybridLLMOrchestrator
+from export.document_generators import generate_pdf_buffer, generate_docx_buffer
 
 # ---------------------------------------------------------
 # Application Initialization & State Management
@@ -144,6 +145,28 @@ def render_citations(sources):
                 st.markdown(f"> {clean_chunk}")
             st.divider()
 
+def render_download_buttons(content: str, index: int):
+    if not content or len(content) < 10:
+        return
+    st.markdown("<br>", unsafe_allow_html=True)
+    col1, col2, _ = st.columns([1, 1, 3])
+    with col1:
+        st.download_button(
+            label="📄 Export PDF",
+            data=generate_pdf_buffer(content).getvalue(),
+            file_name=f"AI_Insight_{index}.pdf",
+            mime="application/pdf",
+            key=f"pdf_btn_{index}"
+        )
+    with col2:
+        st.download_button(
+            label="📝 Export DOCX",
+            data=generate_docx_buffer(content).getvalue(),
+            file_name=f"AI_Insight_{index}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            key=f"docx_btn_{index}"
+        )
+
 # ---------------------------------------------------------
 # 1. Dual-Column Layout: Main Chat Interface
 # ---------------------------------------------------------
@@ -159,11 +182,13 @@ if st.session_state.orchestrator is None:
     )
 
 # Render Chat History from Memory
-for message in st.session_state.messages:
+for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if "sources" in message and message["sources"]:
             render_citations(message["sources"])
+        if message["role"] == "assistant":
+            render_download_buttons(message["content"], i)
 
 # User Chat Input
 if prompt := st.chat_input("Ask a question based strictly on the uploaded documents..."):
@@ -196,6 +221,10 @@ if prompt := st.chat_input("Ask a question based strictly on the uploaded docume
                 
                 # Expandable Semantic Attributions with Deduplication
                 render_citations(sources)
+                
+                # Render In-Memory Export Buttons for the new response
+                new_msg_index = len(st.session_state.messages)
+                render_download_buttons(answer, new_msg_index)
                             
                 # Commit agent response to memory state with citations
                 st.session_state.messages.append({
