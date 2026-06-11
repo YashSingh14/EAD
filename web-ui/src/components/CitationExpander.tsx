@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, FileSearch } from 'lucide-react';
-import { Citation } from '../hooks/useChatState';
+import type { Citation } from '../hooks/useChatState';
 
 export function CitationExpander({ citations }: { citations: Citation[] }) {
   const [isExpanded, setIsExpanded] = useState(false);
