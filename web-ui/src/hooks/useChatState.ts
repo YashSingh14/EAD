@@ -16,10 +16,10 @@ export interface Message {
 export function useChatState() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [provider, setProvider] = useState<'local' | 'cloud'>('local');
+  const [modelName, setModelName] = useState('mistral');
 
   const addMessage = (message: Omit<Message, 'id'>) => {
-    // Uses standard state management without complex reducers to prevent flickering
-    // Generates a local epoch ID for React key rendering
     setMessages(prev => [...prev, { ...message, id: Date.now().toString() }]);
   };
 
@@ -28,5 +28,11 @@ export function useChatState() {
     isLoading,
     setIsLoading,
     addMessage,
+    provider,
+    setProvider,
+    modelName,
+    setModelName
   };
 }
+
+export type ChatState = ReturnType<typeof useChatState>;

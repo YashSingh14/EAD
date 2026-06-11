@@ -1,42 +1,57 @@
 import React, { useState } from 'react';
 import { Send, User, Cpu } from 'lucide-react';
-import { useChatState } from '../hooks/useChatState';
+import { ChatState } from '../hooks/useChatState';
 import { CitationExpander } from './CitationExpander';
 
-export function ChatContainer() {
-  const { messages, isLoading, addMessage, setIsLoading } = useChatState();
+export function ChatContainer({ chatState }: { chatState: ChatState }) {
+  const { messages, isLoading, addMessage, setIsLoading, provider, modelName } = chatState;
   const [input, setInput] = useState('');
 
-  // Example frontend mock handler for demonstration of state management
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    addMessage({ role: 'user', content: input });
+    const query = input;
+    addMessage({ role: 'user', content: query });
     setInput('');
     setIsLoading(true);
 
-    // Simulate backend response payload
-    setTimeout(() => {
+    try {
+      const response = await fetch('http://localhost:8000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: query,
+          provider: provider,
+          model_name: modelName
+        }),
+      });
+      
+      if (!response.ok) throw new Error('API Request Failed');
+      const data = await response.json();
+      
       addMessage({
         role: 'assistant',
-        content: 'Based strictly on the provided documents, the Q3 revenue grew by 14% year-over-year. The primary driver was the new Enterprise SaaS tier launch in EMEA.',
-        citations: [
-          { filename: 'Q3_Financial_Report.pdf', page: 12, snippet: 'Revenue for the third quarter grew by 14% YoY, largely attributed to the successful rollout of the Enterprise SaaS tier across the EMEA region.' }
-        ]
+        content: data.answer,
+        citations: data.citations
       });
+    } catch (error) {
+      console.error(error);
+      addMessage({
+        role: 'assistant',
+        content: 'Error: Failed to connect to the backend orchestration engine. Please ensure the FastAPI server is running on port 8000.'
+      });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
     <div className="flex-1 flex flex-col h-screen bg-white">
-      {/* Header */}
       <header className="h-16 border-b border-slate-200 flex items-center px-8 bg-white/90 backdrop-blur-sm sticky top-0 z-10">
         <h2 className="text-lg font-medium text-slate-800 tracking-tight">Research Assistant</h2>
       </header>
 
-      {/* Messages Stream */}
       <div className="flex-1 overflow-y-auto p-8 scroll-smooth">
         <div className="max-w-3xl mx-auto space-y-8 pb-4">
           {messages.length === 0 ? (
@@ -83,7 +98,6 @@ export function ChatContainer() {
         </div>
       </div>
 
-      {/* Input Area */}
       <div className="p-6 bg-white border-t border-slate-100">
         <div className="max-w-3xl mx-auto relative">
           <form onSubmit={handleSubmit}>
