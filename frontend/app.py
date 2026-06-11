@@ -124,6 +124,26 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
+def render_citations(sources):
+    if not sources:
+        return
+    with st.expander("🔍 View Source Citations"):
+        grouped_sources = {}
+        for doc in sources:
+            filename = doc.metadata.get('filename', 'Unknown Source')
+            page = doc.metadata.get('page_number', 'N/A')
+            key = (filename, page)
+            if key not in grouped_sources:
+                grouped_sources[key] = []
+            grouped_sources[key].append(doc.page_content)
+            
+        for (filename, page), chunks in grouped_sources.items():
+            st.markdown(f"**Source Document:** **{filename}**  \n**Location:** Page {page}")
+            for chunk in chunks:
+                clean_chunk = chunk.replace('\n', '\n> ')
+                st.markdown(f"> {clean_chunk}")
+            st.divider()
+
 # ---------------------------------------------------------
 # 1. Dual-Column Layout: Main Chat Interface
 # ---------------------------------------------------------
@@ -142,6 +162,8 @@ if st.session_state.orchestrator is None:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if "sources" in message and message["sources"]:
+            render_citations(message["sources"])
 
 # User Chat Input
 if prompt := st.chat_input("Ask a question based strictly on the uploaded documents..."):
@@ -172,16 +194,15 @@ if prompt := st.chat_input("Ask a question based strictly on the uploaded docume
                 # Display output stream
                 st.markdown(answer)
                 
-                # Expandable Semantic Attributions
-                if sources:
-                    with st.expander("🔍 View Retrieved Context Attributions"):
-                        for i, doc in enumerate(sources):
-                            st.markdown(f"**Source {i+1}:** `{doc.metadata.get('filename')}` (Page {doc.metadata.get('page_number', 'N/A')})")
-                            st.caption(f"> {doc.page_content}")
-                            st.divider()
+                # Expandable Semantic Attributions with Deduplication
+                render_citations(sources)
                             
-                # Commit agent response to memory state
-                st.session_state.messages.append({"role": "assistant", "content": answer})
+                # Commit agent response to memory state with citations
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": answer,
+                    "sources": sources
+                })
                 
             except Exception as e:
                 error_msg = f"System Error during LLM reasoning execution: {e}"
