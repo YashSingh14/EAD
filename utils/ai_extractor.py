@@ -32,7 +32,7 @@ def extract_decision_from_text(text: str) -> dict:
     
     chain = prompt | structured_llm
     result = chain.invoke({"text": text})
-    return result.dict()
+    return result.model_dump()
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     """
@@ -45,7 +45,7 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     try:
         loader = PyPDFLoader(tmp_path)
         pages = loader.load()
-        full_text = "\\n".join([page.page_content for page in pages])
+        full_text = "\n".join([page.page_content for page in pages])
         return full_text
     finally:
         os.remove(tmp_path)

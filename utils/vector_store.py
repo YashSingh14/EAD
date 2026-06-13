@@ -74,4 +74,4 @@ def search_similar_decisions(query: str, top_k: int = 3) -> list:
     query_vector = generate_embedding(query)
     results = index.query(vector=query_vector, top_k=top_k, include_metadata=True)
     
-    return results.get('matches', [])
+    return results.matches if results.matches else []
